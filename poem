@@ -1,0 +1,104 @@
+#!/usr/bin/env python
+# coding=utf-8
+
+import sys
+import json
+import pycurl
+import StringIO
+from urllib import urlencode
+import argparse
+import random
+import re
+
+content_type = "application/x-www-form-urlencoded; charset=UTF-8"
+user_agent = "Dalvik/2.1.0 (Linux; U; Android 5.1; MX4 Build/LMY47I)"
+host = "http://app.gushiwen.org"
+connection = "Keep-Alive"
+
+tags = [r'<br />', r'<br/>', r'<p>', r'</p>']
+
+def delt(content):
+    for i in tags:
+        content = content.replace(i, '')
+    content = content.replace(u"。", u"。\n")
+    return content
+
+def get(skey):
+    headers = ["Content-Type: " + content_type, "Connection: " + connection]
+    b = StringIO.StringIO()
+
+    c = pycurl.Curl()
+    c.setopt(pycurl.URL, host+"/api/search.aspx")
+    c.setopt(pycurl.WRITEFUNCTION, b.write)
+    c.setopt(pycurl.USERAGENT, user_agent)
+    c.setopt(pycurl.HTTPHEADER, headers)
+
+    postdata = {'page': 1, 'value': skey, 'token': 'gswapi'}
+    postfield = urlencode(postdata)
+    c.setopt(pycurl.POSTFIELDS, postfield)
+    c.setopt(pycurl.TIMEOUT, 10)
+    c.perform()
+    c.close()
+
+    jsonstr = b.getvalue()
+    obj = json.loads(jsonstr)
+
+    if obj.has_key('gushiwens'):
+        lists = obj['gushiwens']
+        for item in lists:
+            print(item['nameStr'])
+            print(item['author'])
+            print(item['chaodai'])
+            print(delt(item['cont']))
+            print("-------------------------")
+
+
+def getrandom():
+    headers = ["Content-Type: " + content_type, "Connection: " + connection]
+    b = StringIO.StringIO()
+
+    c = pycurl.Curl()
+    c.setopt(pycurl.URL, host+"/api/shiwen/type.aspx")
+    c.setopt(pycurl.WRITEFUNCTION, b.write)
+    c.setopt(pycurl.USERAGENT, user_agent)
+    c.setopt(pycurl.HTTPHEADER, headers)
+    """
+    postdata = {'p': 1, 'c': '', 't': '', 'x': '', 'id': 0, 'pwd': '', 'token': 'gswapi'}
+    postfield = urlencode(postdata)
+    c.setopt(pycurl.POSTFIELDS, postfield)
+    c.setopt(pycurl.TIMEOUT, 10)
+
+    c.perform()
+
+    jsonstr = b.getvalue()
+    obj = json.loads(jsonstr)
+    print(obj)
+    """
+
+    count = 72155
+    id = random.randint(0, count)
+
+    c.setopt(pycurl.URL, host+"/api/shiwen/view.aspx")
+    postdata = {'id': id, 'token': 'gswapi'}
+    postfield = urlencode(postdata)
+    c.setopt(pycurl.POSTFIELDS, postfield)
+
+    c.perform()
+
+    jsonstr = b.getvalue()
+    obj = json.loads(jsonstr)
+    print(obj['tb_gushiwen']['nameStr'])
+    print(obj['tb_gushiwen']['author'])
+    print(obj['tb_gushiwen']['chaodai'])
+    content = delt(obj['tb_gushiwen']['cont'])
+    
+    print(content)
+
+    c.close()
+
+
+if __name__ == '__main__':
+    if len(sys.argv) == 1:
+        getrandom()
+    else:
+        get(sys.argv[1])
